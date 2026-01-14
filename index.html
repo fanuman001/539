@@ -3,167 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>投注站終極結帳系統</title>
+    <title>台彩/運彩 智慧結帳系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; font-family: "Microsoft JhengHei", sans-serif; }
-        .card { border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .nav-pills .nav-link.active { background-color: #d9534f; }
-        .btn-cash { width: 100%; margin-bottom: 10px; height: 50px; font-size: 1.1rem; }
-        .summary-box { background: #e9ecef; border-radius: 10px; padding: 15px; }
-        .diff-pos { color: green; font-weight: bold; }
-        .diff-neg { color: red; font-weight: bold; }
+        :root { --primary-color: #e63946; --bg-color: #f8f9fa; }
+        body { background-color: var(--bg-color); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card-header { background-color: white; border-bottom: 1px solid #eee; font-weight: bold; color: var(--primary-color); }
+        .real-time-panel { position: sticky; bottom: 0; background: white; border-top: 2px solid var(--primary-color); padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); z-index: 1000; }
+        .diff-box { font-size: 1.5rem; font-weight: 800; }
+        .unit-label { font-size: 0.85rem; color: #666; }
     </style>
 </head>
 <body>
 
-<div class="container py-4">
-    <h2 class="text-center mb-4">🎰 彩券行打烊結帳系統</h2>
+<div class="container py-4 mb-5">
+    <h3 class="text-center mb-4">🏆 店家打烊結帳系統</h3>
 
-    <ul class="nav nav-pills nav-fill mb-4" id="pills-tab" role="tablist">
-        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab1">1.台彩/刮刮樂</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab2">2.運彩/會員</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab3">3.點鈔/支出</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab4">4.總結</button></li>
-    </ul>
-
-    <form id="closingForm">
-        <div class="tab-content">
-            <div class="tab-pane fade show active" id="tab1">
-                <div class="card p-3">
-                    <h5>💎 台灣彩券 (電腦型)</h5>
-                    <div class="row g-2">
-                        <div class="col-6"><label>銷售總額</label><input type="number" name="lottoSales" class="form-control" value="0"></div>
-                        <div class="col-6"><label>作廢金額</label><input type="number" name="lottoVoid" class="form-control" value="0"></div>
-                        <div class="col-6"><label>店內兌獎</label><input type="number" name="lottoPayoutIn" class="form-control" value="0"></div>
-                        <div class="col-6"><label>跨店兌獎</label><input type="number" name="lottoPayoutOut" class="form-control" value="0"></div>
-                    </div>
-                    <h5 class="mt-4">🎟️ 刮刮樂 (立即型)</h5>
-                    <div class="row g-2">
-                        <div class="col-6"><label>今日拆封(總面額)</label><input type="number" name="scratchLoad" class="form-control" value="0"></div>
-                        <div class="col-6"><label>散張銷售</label><input type="number" name="scratchSales" class="form-control" value="0"></div>
-                        <div class="col-12"><label>中獎兌付</label><input type="number" name="scratchPayout" class="form-control" value="0"></div>
-                    </div>
-                </div>
+    <form id="payForm">
+        <div class="card">
+            <div class="card-header">基本資訊</div>
+            <div class="card-body row g-2">
+                <div class="col-6"><label>日期</label><input type="date" name="date" class="form-control" id="todayDate"></div>
+                <div class="col-6"><label>結帳人</label><input type="text" name="staff" class="form-control" placeholder="姓名"></div>
             </div>
+        </div>
 
-            <div class="tab-pane fade" id="tab2">
-                <div class="card p-3">
-                    <h5>⚽ 運動彩券</h5>
-                    <div class="row g-2">
-                        <div class="col-6"><label>實體銷售</label><input type="number" name="sportSales" class="form-control" value="0"></div>
-                        <div class="col-6"><label>作廢金額</label><input type="number" name="sportVoid" class="form-control" value="0"></div>
-                        <div class="col-12"><label>中獎兌付</label><input type="number" name="sportPayout" class="form-control" value="0"></div>
-                    </div>
-                    <h5 class="mt-4">👤 會員與虛擬通路</h5>
-                    <div class="row g-2">
-                        <div class="col-12"><label>虛擬通路業績 (不計入現金)</label><input type="number" name="sportVirtual" class="form-control" value="0"></div>
-                        <div class="col-6"><label>會員儲值(入金)</label><input type="number" name="memberIn" class="form-control" value="0"></div>
-                        <div class="col-6"><label>會員出金</label><input type="number" name="memberOut" class="form-control" value="0"></div>
-                    </div>
-                </div>
+        <div class="card">
+            <div class="card-header">💎 台灣彩券 (電腦型)</div>
+            <div class="card-body row g-2">
+                <div class="col-6"><label>銷售額</label><input type="number" name="lottoSales" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>作廢額</label><input type="number" name="lottoVoid" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>店內兌獎</label><input type="number" name="lottoPayoutIn" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>跨店兌獎</label><input type="number" name="lottoPayoutOut" class="form-control calc" value="0"></div>
             </div>
+        </div>
 
-            <div class="tab-pane fade" id="tab3">
-                <div class="card p-3">
-                    <h5>💵 現金清點 (請輸入張數/個數)</h5>
-                    <div class="row g-2">
-                        <div class="col-4">2000元<input type="number" name="c2000" class="form-control cash-count" data-unit="2000" value="0"></div>
-                        <div class="col-4">1000元<input type="number" name="c1000" class="form-control cash-count" data-unit="1000" value="0"></div>
-                        <div class="col-4">500元<input type="number" name="c500" class="form-control cash-count" data-unit="500" value="0"></div>
-                        <div class="col-4">200元<input type="number" name="c200" class="form-control cash-count" data-unit="200" value="0"></div>
-                        <div class="col-4">100元<input type="number" name="c100" class="form-control cash-count" data-unit="100" value="0"></div>
-                        <div class="col-4">50元<input type="number" name="m50" class="form-control cash-count" data-unit="50" value="0"></div>
-                        <div class="col-4">10元<input type="number" name="m10" class="form-control cash-count" data-unit="10" value="0"></div>
-                        <div class="col-4">5元<input type="number" name="m5" class="form-control cash-count" data-unit="5" value="0"></div>
-                        <div class="col-4">1元<input type="number" name="m1" class="form-control cash-count" data-unit="1" value="0"></div>
-                    </div>
-                    <h5 class="mt-4">⚖️ 額外收支</h5>
-                    <div class="row g-2">
-                        <div class="col-6"><label>期初週轉金</label><input type="number" name="opening" class="form-control" value="10000"></div>
-                        <div class="col-6"><label>店長提領/存行</label><input type="number" name="bankAction" class="form-control" value="0"></div>
-                        <div class="col-6"><label>雜支項目</label><input type="text" name="expNote" class="form-control" placeholder="買水"></div>
-                        <div class="col-6"><label>雜支金額</label><input type="number" name="expAmount" class="form-control" value="0"></div>
-                    </div>
+        <div class="card">
+            <div class="card-header">🎟️ 刮刮樂 (依面額填寫銷售張數)</div>
+            <div class="card-body">
+                <div class="row g-2 text-center mb-3">
+                    <div class="col-4"><span class="unit-label">2000元</span><input type="number" data-price="2000" class="form-control sc-calc" value="0"></div>
+                    <div class="col-4"><span class="unit-label">1000元</span><input type="number" data-price="1000" class="form-control sc-calc" value="0"></div>
+                    <div class="col-4"><span class="unit-label">500元</span><input type="number" data-price="500" class="form-control sc-calc" value="0"></div>
+                    <div class="col-4"><span class="unit-label">300元</span><input type="number" data-price="300" class="form-control sc-calc" value="0"></div>
+                    <div class="col-4"><span class="unit-label">200元</span><input type="number" data-price="200" class="form-control sc-calc" value="0"></div>
+                    <div class="col-4"><span class="unit-label">100元</span><input type="number" data-price="100" class="form-control sc-calc" value="0"></div>
                 </div>
-            </div>
-
-            <div class="tab-pane fade" id="tab4">
-                <div class="card p-4 text-center">
-                    <h4>今日結算摘要</h4>
-                    <div class="summary-box mt-3">
-                        <p>應有現金：<span id="showExpected">$0</span></p>
-                        <p>實際現金：<span id="showActual">$0</span></p>
-                        <hr>
-                        <h3>損益差異：<span id="showDiff">$0</span></h3>
-                    </div>
-                    <div class="mt-3 text-start">
-                        <label>班別</label>
-                        <select name="shift" class="form-control mb-2"><option>全天班</option><option>早班</option><option>晚班</option></select>
-                        <label>結帳人員</label>
-                        <input type="text" name="staff" class="form-control mb-2" required>
-                        <label>備註說明</label>
-                        <textarea name="memo" class="form-control"></textarea>
-                    </div>
-                    <button type="button" onclick="sendToGoogle()" class="btn btn-danger btn-lg w-100 mt-4">確認並送出資料</button>
+                <hr>
+                <div class="row g-2">
+                    <div class="col-6"><label>刮刮樂總銷</label><input type="number" name="scratchSales" id="scTotal" class="form-control bg-light" readonly value="0"></div>
+                    <div class="col-6"><label>刮刮樂兌獎</label><input type="number" name="scratchPayout" class="form-control calc" value="0"></div>
                 </div>
             </div>
         </div>
+
+        <div class="card">
+            <div class="card-header">⚽ 運動彩券</div>
+            <div class="card-body row g-2">
+                <div class="col-6"><label>實體銷售</label><input type="number" name="sportSales" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>作廢額</label><input type="number" name="sportVoid" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>中獎兌付</label><input type="number" name="sportPayout" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>會員儲值</label><input type="number" name="memberIn" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>會員出金</label><input type="number" name="memberOut" class="form-control calc" value="0"></div>
+                <div class="col-6"><label>虛擬業績</label><input type="number" name="sportVirtual" class="form-control" value="0"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">💵 現場現金清點</div>
+            <div class="card-body row g-2">
+                <div class="col-4"><span class="unit-label">1000元</span><input type="number" data-cash="1000" class="form-control cash-calc" value="0"></div>
+                <div class="col-4"><span class="unit-label">500元</span><input type="number" data-cash="500" class="form-control cash-calc" value="0"></div>
+                <div class="col-4"><span class="unit-label">100元</span><input type="number" data-cash="100" class="form-control cash-calc" value="0"></div>
+                <div class="col-4"><span class="unit-label">50元</span><input type="number" data-cash="50" class="form-control cash-calc" value="0"></div>
+                <div class="col-4"><span class="unit-label">10元</span><input type="number" data-cash="10" class="form-control cash-calc" value="0"></div>
+                <div class="col-4"><span class="unit-label">5元/1元</span><input type="number" id="smallChange" class="form-control cash-calc-manual" value="0"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <label>備註</label>
+                <textarea name="memo" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+
+        <button type="button" onclick="submitData()" class="btn btn-danger btn-lg w-100 mb-5">確認上傳資料</button>
     </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+<div class="real-time-panel">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-4 border-end">
+                <div class="unit-label">應有現金</div>
+                <div id="expectedVal" class="fw-bold text-dark">0</div>
+            </div>
+            <div class="col-4 border-end">
+                <div class="unit-label">實際現金</div>
+                <div id="actualVal" class="fw-bold text-dark">0</div>
+            </div>
+            <div class="col-4">
+                <div class="unit-label">損益差異</div>
+                <div id="diffVal" class="diff-box text-danger">0</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-// 自動計算邏輯
-document.querySelectorAll('input').forEach(input => {
-    input.addEventListener('input', calculateResult);
+// 設定今天日期
+document.getElementById('todayDate').valueAsDate = new Date();
+
+// 實時計算監聽
+document.querySelectorAll('.calc, .sc-calc, .cash-calc, .cash-calc-manual').forEach(el => {
+    el.addEventListener('input', runCalculation);
 });
 
-function calculateResult() {
-    const f = new FormData(document.getElementById('closingForm'));
-    const getNum = (name) => Number(f.get(name)) || 0;
-
-    // 1. 計算應有現金
-    // (期初) + (台彩淨銷售) + (刮刮樂銷售) + (運彩淨銷售) + (會員儲值-出金) - (雜支) - (提領)
-    const lottoNet = getNum('lottoSales') - getNum('lottoVoid') - getNum('lottoPayoutIn') - getNum('lottoPayoutOut');
-    const sportNet = getNum('sportSales') - getNum('sportVoid') - getNum('sportPayout');
-    const memberNet = getNum('memberIn') - getNum('memberOut');
-    
-    const expected = getNum('opening') + lottoNet + getNum('scratchSales') - getNum('scratchPayout') + sportNet + memberNet - getNum('expAmount') - getNum('bankAction');
-
-    // 2. 計算實際點鈔現金
-    let actual = 0;
-    document.querySelectorAll('.cash-count').forEach(el => {
-        actual += Number(el.value) * Number(el.dataset.unit);
+function runCalculation() {
+    // 1. 計算刮刮樂銷售總額
+    let scTotal = 0;
+    document.querySelectorAll('.sc-calc').forEach(el => {
+        scTotal += (Number(el.value) || 0) * Number(el.dataset.price);
     });
+    document.getElementById('scTotal').value = scTotal;
 
+    // 2. 應有現金邏輯
+    const getV = (name) => Number(document.querySelector(`[name="${name}"]`).value) || 0;
+    
+    // 公式: (台彩淨額) + (刮刮樂淨額) + (運彩淨額) + (會員淨額)
+    const lottoNet = getV('lottoSales') - getV('lottoVoid') - getV('lottoPayoutIn') - getV('lottoPayoutOut');
+    const scNet = scTotal - getV('scratchPayout');
+    const sportNet = getV('sportSales') - getV('sportVoid') - getV('sportPayout');
+    const memberNet = getV('memberIn') - getV('memberOut');
+    
+    const expected = lottoNet + scNet + sportNet + memberNet;
+
+    // 3. 實際現金邏輯
+    let actual = 0;
+    document.querySelectorAll('.cash-calc').forEach(el => {
+        actual += (Number(el.value) || 0) * Number(el.dataset.cash);
+    });
+    actual += Number(document.getElementById('smallChange').value) || 0;
+
+    // 4. 顯示結果
+    document.getElementById('expectedVal').innerText = expected.toLocaleString();
+    document.getElementById('actualVal').innerText = actual.toLocaleString();
     const diff = actual - expected;
-
-    document.getElementById('showExpected').innerText = Math.round(expected).toLocaleString();
-    document.getElementById('showActual').innerText = Math.round(actual).toLocaleString();
-    document.getElementById('showDiff').innerText = Math.round(diff).toLocaleString();
-    document.getElementById('showDiff').className = diff >= 0 ? 'diff-pos' : 'diff-neg';
+    const diffEl = document.getElementById('diffVal');
+    diffEl.innerText = diff.toLocaleString();
+    diffEl.style.color = diff === 0 ? "green" : "red";
 }
 
-function sendToGoogle() {
-    const scriptURL = '您的_GAS_網頁應用程式網址'; 
-    const form = document.getElementById('closingForm');
+async function submitData() {
+    const scriptURL = '您的網頁應用程式網址'; // 👈 貼上您部署後的網址
+    const form = document.getElementById('payForm');
     const formData = new FormData(form);
-    
-    // 將所有數據封裝成 JSON
-    let data = {};
-    formData.forEach((value, key) => { data[key] = value; });
-    
-    // 加入計算後的結果
-    data.expectedCash = document.getElementById('showExpected').innerText;
-    data.actualCash = document.getElementById('showActual').innerText;
-    data.diff = document.getElementById('showDiff').innerText;
+    let data = Object.fromEntries(formData.entries());
 
-    alert('正在上傳資料，請稍候...');
-    
-    fetch(scriptURL, { method: 'POST', body: JSON.stringify(data) })
-    .then(res => alert('資料上傳成功！'))
-    .catch(err => alert('連線失敗，請檢查網路或 API 設定'));
+    // 額外加入計算結果
+    data.expectedCash = document.getElementById('expectedVal').innerText.replace(/,/g, '');
+    data.actualCash = document.getElementById('actualVal').innerText.replace(/,/g, '');
+    data.diff = document.getElementById('diffVal').innerText.replace(/,/g, '');
+
+    if(!confirm(`確定送出？今日損益差異為: ${data.diff}`)) return;
+
+    try {
+        await fetch(scriptURL, { method: 'POST', body: JSON.stringify(data) });
+        alert('上傳成功！');
+        location.reload();
+    } catch (e) {
+        alert('上傳失敗，請檢查網路');
+    }
 }
 </script>
 </body>
