@@ -3,68 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>刮刮樂進銷存系統 Pro</title>
+    <title>刮刮樂進銷存系統 Pro v2</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --main-dark: #212529; --accent: #ffc107; }
         body { background: #f0f2f5; padding-bottom: 80px; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
         
-        /* 表格優化 */
+        /* 基礎 UI */
         .table-main { background: white; border: 2px solid #333; table-layout: fixed; width: 100%; }
-        .table-main th { background: var(--main-dark); color: white; border: 1px solid #444; font-size: 0.95rem; vertical-align: middle; padding: 6px 2px; }
-        .table-main td { border: 1px solid #ccc; padding: 0; vertical-align: middle; overflow: hidden; }
-        
-        /* 品名格優化：縮小高度與寬度 */
-        .item-name-cell { font-size: 0.9rem; line-height: 1.2; padding: 5px !important; background: #f8f9fa; word-break: break-all; }
-        
-        /* 輸入格優化：讓數字更清晰 */
-        .input-cell { width: 100%; border: none; text-align: center; outline: none; padding: 12px 2px; font-size: 1.1rem; font-weight: 600; background: transparent; transition: 0.2s; }
-        .input-cell:focus { background: #fffde7; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
-        .memo-cell { font-size: 0.85rem; text-align: left; padding: 5px !important; }
+        .table-main th { background: var(--main-dark); color: white; border: 1px solid #444; font-size: 0.85rem; vertical-align: middle; padding: 4px; }
+        .table-main td { border: 1px solid #ccc; padding: 0; vertical-align: middle; }
+        .input-cell { width: 100%; border: none; text-align: center; outline: none; padding: 10px 2px; font-size: 1.1rem; font-weight: 600; background: transparent; }
+        .input-cell:focus { background: #fffde7; }
+        .total-bar { position: fixed; bottom: 0; width: 100%; background: var(--main-dark); color: var(--accent); padding: 12px; font-size: 1.4rem; text-align: center; font-weight: bold; z-index: 1000; }
 
-        /* 底部總計列 */
-        .total-bar { position: fixed; bottom: 0; width: 100%; background: var(--main-dark); color: var(--accent); padding: 12px; font-size: 1.4rem; text-align: center; font-weight: bold; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+        /* 帳務彙總表樣式 */
+        .summary-card { background: #fff; border-left: 5px solid #0d6efd; }
+        .summary-input { text-align: right; font-weight: bold; color: #0d6efd; }
 
-        /* 列印專用樣式 */
+        /* 列印強化 */
         @media print {
             @page { size: A4 landscape; margin: 1cm; }
-            .no-print, .total-bar { display: none !important; }
-            body { background: white; padding: 0; }
-            .table-main { border: 1px solid black; width: 100%; }
-            .table-main th, .table-main td { border: 1px solid black !important; color: black !important; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 10px; }
-            .input-cell { font-size: 10pt; padding: 4px; }
+            html, body { width: 297mm; height: 210mm; background: white; }
+            .no-print { display: none !important; }
+            .table-main { border: 2px solid black; font-size: 10pt; }
+            .print-header, .print-footer { display: block !important; }
+            .input-cell { padding: 4px; font-size: 10pt; }
+            .summary-card { border: 1px solid #000; margin-top: 10px; }
         }
-        .print-header { display: none; }
+        .print-header, .print-footer { display: none; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container-fluid py-3">
     <div class="print-header">
-        <h2>刮刮樂結帳報表</h2>
-        <h4 id="printDateDisplay"></h4>
+        <h2 class="mb-0">刮刮樂進銷存報表</h2>
+        <p id="printDateDisplay" class="h5"></p>
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h4 class="m-0">🏆 刮刮樂進銷存管理</h4>
+        <h4 class="m-0">🏆 刮刮樂進銷存 Pro v2</h4>
         <div class="d-flex gap-2">
-            <button class="btn btn-dark btn-sm" onclick="showItemModal()">＋ 品項管理</button>
+            <button class="btn btn-dark btn-sm" onclick="showItemModal()">⚙️ 品項管理</button>
             <button class="btn btn-outline-dark btn-sm" onclick="window.print()">🖨️ 列印(橫式A4)</button>
         </div>
     </div>
     
-    <div class="card shadow-sm border-0 mb-4 no-print">
-        <div class="card-body bg-white">
-            <div class="row g-3 align-items-end">
+    <div class="card shadow-sm mb-3 no-print">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold small">📅 選擇結帳日期</label>
+                    <label class="form-label fw-bold small">📅 結帳日期</label>
                     <input type="date" id="targetDate" class="form-control" onchange="loadRecordsByDate()">
                 </div>
                 <div class="col text-end">
-                    <button class="btn btn-primary" onclick="loadPrevData()">📥 帶入前日結餘</button>
-                    <button class="btn btn-success px-4" onclick="submitData()">💾 儲存今日紀錄</button>
+                    <button class="btn btn-primary btn-sm" onclick="loadPrevData()">📥 帶入前日餘額</button>
+                    <button class="btn btn-success btn-sm" onclick="submitData()">💾 儲存所有紀錄</button>
                 </div>
             </div>
         </div>
@@ -75,9 +71,9 @@
             <thead>
                 <tr>
                     <th rowspan="2" style="width: 12%;">品名</th>
-                    <th colspan="2" style="width: 16%;">庫存 (本)</th>
+                    <th colspan="2">庫存 (本)</th>
                     <th rowspan="2" style="width: 8%;">前日<br>零張</th>
-                    <th colspan="2" style="width: 16%;">今日剩餘</th>
+                    <th colspan="2">今日剩餘</th>
                     <th rowspan="2" style="width: 8%;">售出</th>
                     <th rowspan="2" style="width: 12%;">金額</th>
                     <th rowspan="2" style="width: 28%;">備註</th>
@@ -89,30 +85,79 @@
                     <th style="width: 8%;">零張</th>
                 </tr>
             </thead>
-            <tbody id="scratchBody">
-                </tbody>
+            <tbody id="scratchBody"></tbody>
         </table>
+    </div>
+
+    <div class="row mt-4 mb-5">
+        <div class="col-lg-6">
+            <div class="card summary-card shadow-sm">
+                <div class="card-header bg-white fw-bold">📊 今日帳務彙總</div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0">
+                        <tr>
+                            <td class="bg-light w-50">＋ 樂透銷售總計</td>
+                            <td><input type="number" id="s_lotto_sales" class="form-control border-0 summary-input" value="0" oninput="calcFinal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">－ 樂透兌獎代墊</td>
+                            <td><input type="number" id="s_lotto_payout" class="form-control border-0 summary-input text-danger" value="0" oninput="calcFinal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">－ 立即型兌獎代墊</td>
+                            <td><input type="number" id="s_scratch_payout" class="form-control border-0 summary-input text-danger" value="0" oninput="calcFinal()"></td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">＋ 刮刮樂今日總額</td>
+                            <td id="s_scratch_total" class="text-end fw-bold px-3 text-primary">0</td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">＋ 運彩銷售結餘</td>
+                            <td><input type="number" id="s_sport_balance" class="form-control border-0 summary-input" value="0" oninput="calcFinal()"></td>
+                        </tr>
+                        <tr class="table-dark">
+                            <td class="fw-bold">💰 今日應收總金額</td>
+                            <td id="s_final_amount" class="text-end fw-bold px-3 text-warning h5 mb-0">0</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="print-footer mt-3">
+        <hr>
+        <div class="d-flex justify-content-between h5">
+            <span>刮刮樂總計：$ <span id="printScratchTotal">0</span></span>
+            <span>應收總額：$ <span id="printFinalTotal">0</span></span>
+        </div>
     </div>
 </div>
 
-<div class="total-bar">
-    今日總結金額：$ <span id="grandTotal">0</span>
+<div class="total-bar no-print">
+    刮刮樂總金額：$ <span id="grandTotal">0</span>
 </div>
 
 <div class="modal fade" id="itemModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-dark text-white">
-          <h5 class="modal-title">新增刮刮樂品項</h5>
+          <h5 class="modal-title">品項管理 (新增/下架)</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-3"><label class="form-label small">品名</label><input type="text" id="m_name" class="form-control"></div>
-        <div class="mb-3"><label class="form-label small">單本張數</label><input type="number" id="m_size" class="form-control" value="19"></div>
-        <div class="mb-3"><label class="form-label small">單價 (元/張)</label><input type="number" id="m_price" class="form-control" value="2000"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary w-100" onclick="saveNewItem()">確認儲存</button>
+          <div class="row g-2 mb-3 border-bottom pb-3">
+              <div class="col-md-5"><input type="text" id="m_name" class="form-control" placeholder="品名"></div>
+              <div class="col-md-3"><input type="number" id="m_size" class="form-control" value="19" placeholder="張數"></div>
+              <div class="col-md-3"><input type="number" id="m_price" class="form-control" value="2000" placeholder="單價"></div>
+              <div class="col-md-1"><button class="btn btn-primary w-100" onclick="saveNewItem()">＋</button></div>
+          </div>
+          <div class="table-responsive" style="max-height: 300px;">
+              <table class="table table-sm">
+                  <thead><tr><th>品名</th><th>售價</th><th>狀態</th><th>操作</th></tr></thead>
+                  <tbody id="itemManageList"></tbody>
+              </table>
+          </div>
       </div>
     </div>
   </div>
@@ -135,57 +180,90 @@ window.onload = function() {
 };
 
 function updatePrintDate() {
-    document.getElementById('printDateDisplay').innerText = "結帳日期：" + document.getElementById('targetDate').value;
+    const d = document.getElementById('targetDate').value;
+    document.getElementById('printDateDisplay').innerText = "結帳日期：" + d;
 }
 
-function showItemModal() { itemModalObj.show(); }
-
+// 初始化資料
 async function init() {
     try {
-        const { data: items, error } = await _supabase.from('scratch_items').select('*').order('price', { ascending: false });
+        // 只抓取 is_active 為 true 的，或是在當日已有紀錄的品項
+        const { data: items, error } = await _supabase.from('scratch_items').select('*').order('is_active', {ascending: false}).order('price', { ascending: false });
         if (error) throw error;
         
-        const tbody = document.getElementById('scratchBody');
-        tbody.innerHTML = '';
-        
-        items.forEach(item => {
-            const row = document.createElement('tr');
-            row.id = `row_${item.id}`;
-            row.setAttribute('data-size', item.size);
-            row.setAttribute('data-price', item.price);
-            row.setAttribute('data-name', item.name);
-            row.innerHTML = `
-                <td class="text-center fw-bold item-name-cell">${item.name}<br><small class="text-muted">${item.price}元</small></td>
-                <td><input type="number" class="input-cell p_b" value="0" oninput="calc(${item.id})"></td>
-                <td><input type="number" class="input-cell n_b" value="0" oninput="calc(${item.id})"></td>
-                <td><input type="number" class="input-cell p_l" value="0" oninput="calc(${item.id})"></td>
-                <td><input type="number" class="input-cell t_b" value="0" oninput="calc(${item.id})"></td>
-                <td><input type="number" class="input-cell t_l" value="0" oninput="calc(${item.id})"></td>
-                <td id="sold_${item.id}" class="text-center fw-bold text-primary align-middle" style="font-size:1.1rem;">0</td>
-                <td id="subt_${item.id}" class="text-center fw-bold text-danger align-middle" style="font-size:1.1rem;">0</td>
-                <td><input type="text" class="input-cell memo-cell memo" placeholder="輸入備註..."></td>
-            `;
-            tbody.appendChild(row);
-        });
+        renderScratchTable(items);
+        renderManageList(items);
         loadRecordsByDate();
-    } catch (e) { console.error("初始化失敗:", e.message); }
+    } catch (e) { console.error(e.message); }
+}
+
+function renderScratchTable(items) {
+    const tbody = document.getElementById('scratchBody');
+    tbody.innerHTML = '';
+    items.forEach(item => {
+        // 下架的品項除非已有紀錄，否則新日期不顯示 (這部分在 loadRecordsByDate 處理)
+        if(!item.is_active) return;
+        createRow(item);
+    });
+}
+
+function createRow(item) {
+    const tbody = document.getElementById('scratchBody');
+    const row = document.createElement('tr');
+    row.id = `row_${item.id}`;
+    row.className = `item-row ${item.is_active ? '' : 'table-secondary no-print'}`;
+    row.setAttribute('data-size', item.size);
+    row.setAttribute('data-price', item.price);
+    row.setAttribute('data-name', item.name);
+    row.innerHTML = `
+        <td class="text-center fw-bold p-2 small">${item.name}</td>
+        <td><input type="number" class="input-cell p_b" value="0" oninput="calc(${item.id})"></td>
+        <td><input type="number" class="input-cell n_b" value="0" oninput="calc(${item.id})"></td>
+        <td><input type="number" class="input-cell p_l" value="0" oninput="calc(${item.id})"></td>
+        <td><input type="number" class="input-cell t_b" value="0" oninput="calc(${item.id})"></td>
+        <td><input type="number" class="input-cell t_l" value="0" oninput="calc(${item.id})"></td>
+        <td id="sold_${item.id}" class="text-center fw-bold text-primary align-middle">0</td>
+        <td id="subt_${item.id}" class="text-center fw-bold text-danger align-middle subt-val">0</td>
+        <td><input type="text" class="input-cell memo" placeholder="..."></td>
+    `;
+    tbody.appendChild(row);
+}
+
+// 品項管理列表
+function renderManageList(items) {
+    const list = document.getElementById('itemManageList');
+    list.innerHTML = '';
+    items.forEach(item => {
+        list.innerHTML += `
+            <tr>
+                <td>${item.name}</td>
+                <td>${item.price}</td>
+                <td>${item.is_active ? '✅ 販售中' : '❌ 已下架'}</td>
+                <td>
+                    <button class="btn btn-sm ${item.is_active ? 'btn-danger' : 'btn-success'}" 
+                        onclick="toggleItem(${item.id}, ${item.is_active})">
+                        ${item.is_active ? '下架' : '上架'}
+                    </button>
+                </td>
+            </tr>`;
+    });
+}
+
+async function toggleItem(id, currentStatus) {
+    const { error } = await _supabase.from('scratch_items').update({ is_active: !currentStatus }).eq('id', id);
+    if (!error) init();
 }
 
 async function saveNewItem() {
     const name = document.getElementById('m_name').value;
     const size = Number(document.getElementById('m_size').value);
     const price = Number(document.getElementById('m_price').value);
-    if(!name) return alert("請輸入名稱");
-    try {
-        const { error } = await _supabase.from('scratch_items').insert([{ name, size, price }]);
-        if (error) throw error;
-        alert("品項新增成功！");
-        itemModalObj.hide();
-        document.getElementById('m_name').value = '';
-        init();
-    } catch (err) { alert("新增失敗：" + err.message); }
+    if(!name) return;
+    await _supabase.from('scratch_items').insert([{ name, size, price }]);
+    init();
 }
 
+// 計算功能
 function calc(id) {
     const row = document.getElementById(`row_${id}`);
     const size = Number(row.dataset.size);
@@ -196,35 +274,43 @@ function calc(id) {
     const tB = Number(row.querySelector('.t_b').value) || 0;
     const tL = Number(row.querySelector('.t_l').value) || 0;
     
-    // 售出 = (前日本 + 新進本 - 剩餘本) * 每本張數 + (前日零張 - 今日零張)
     const sold = ((pB + nB - tB) * size) + (pL - tL);
     document.getElementById(`sold_${id}`).innerText = sold;
     document.getElementById(`subt_${id}`).innerText = (sold * price).toLocaleString();
-    calcAll();
+    calcFinal();
 }
 
-function calcAll() {
-    let total = 0;
-    document.querySelectorAll('[id^="subt_"]').forEach(el => {
-        total += Number(el.innerText.replace(/,/g, ''));
+function calcFinal() {
+    let scratchTotal = 0;
+    document.querySelectorAll('.subt-val').forEach(el => {
+        scratchTotal += Number(el.innerText.replace(/,/g, ''));
     });
-    document.getElementById('grandTotal').innerText = total.toLocaleString();
+    
+    document.getElementById('grandTotal').innerText = scratchTotal.toLocaleString();
+    document.getElementById('s_scratch_total').innerText = scratchTotal.toLocaleString();
+    document.getElementById('printScratchTotal').innerText = scratchTotal.toLocaleString();
+
+    const lottoSales = Number(document.getElementById('s_lotto_sales').value) || 0;
+    const lottoPayout = Number(document.getElementById('s_lotto_payout').value) || 0;
+    const scratchPayout = Number(document.getElementById('s_scratch_payout').value) || 0;
+    const sportBal = Number(document.getElementById('s_sport_balance').value) || 0;
+
+    const final = lottoSales - lottoPayout - scratchPayout + scratchTotal + sportBal;
+    document.getElementById('s_final_amount').innerText = final.toLocaleString();
+    document.getElementById('printFinalTotal').innerText = final.toLocaleString();
 }
 
-// 讀取特定日期：修正為新日期預設為 0，且備註隨日期更換
+// 讀取/儲存
 async function loadRecordsByDate() {
     updatePrintDate();
     const dateStr = document.getElementById('targetDate').value;
+    document.querySelectorAll('.input-cell').forEach(i => i.value = (i.type === 'number' ? 0 : ''));
     
-    // 先將所有格子重置為 0 (或空)
-    document.querySelectorAll('.input-cell').forEach(i => i.value = (i.classList.contains('memo') ? '' : 0));
-    document.querySelectorAll('[id^="sold_"], [id^="subt_"]').forEach(e => e.innerText = "0");
-
-    const { data } = await _supabase.from('daily_records').select('*').eq('record_date', dateStr);
-    
-    if (data && data.length > 0) {
-        data.forEach(rec => {
-            const row = document.querySelector(`tr[data-name="${rec.item_name}"]`);
+    // 1. 讀取刮刮樂
+    const { data: scratchData } = await _supabase.from('daily_records').select('*').eq('record_date', dateStr);
+    if (scratchData) {
+        scratchData.forEach(rec => {
+            let row = document.querySelector(`tr[data-name="${rec.item_name}"]`);
             if (row) {
                 row.querySelector('.p_b').value = rec.prev_book;
                 row.querySelector('.n_b').value = rec.new_book;
@@ -236,17 +322,27 @@ async function loadRecordsByDate() {
             }
         });
     }
-    calcAll();
+
+    // 2. 讀取彙總
+    const { data: summaryData } = await _supabase.from('summary_records').select('*').eq('record_date', dateStr).single();
+    if (summaryData) {
+        document.getElementById('s_lotto_sales').value = summaryData.lotto_sales;
+        document.getElementById('s_lotto_payout').value = summaryData.lotto_payout;
+        document.getElementById('s_scratch_payout').value = summaryData.scratch_payout;
+        document.getElementById('s_sport_balance').value = summaryData.sport_balance;
+    }
+    calcFinal();
 }
 
 async function submitData() {
     const dateStr = document.getElementById('targetDate').value;
-    const records = [];
-    document.querySelectorAll('#scratchBody tr').forEach(row => {
+    
+    // 儲存刮刮樂
+    const scratchRecs = [];
+    document.querySelectorAll('.item-row').forEach(row => {
         const id = row.id.split('_')[1];
-        records.push({
-            record_date: dateStr,
-            item_name: row.dataset.name,
+        scratchRecs.push({
+            record_date: dateStr, item_name: row.dataset.name,
             prev_book: Number(row.querySelector('.p_b').value),
             new_book: Number(row.querySelector('.n_b').value),
             prev_loose: Number(row.querySelector('.p_l').value),
@@ -257,34 +353,42 @@ async function submitData() {
             memo: row.querySelector('.memo').value
         });
     });
-    const { error } = await _supabase.from('daily_records').upsert(records, { onConflict: 'record_date,item_name' });
-    if (error) alert("儲存失敗：" + error.message);
-    else alert("✅ " + dateStr + " 紀錄儲存成功！");
+
+    // 儲存彙總
+    const summaryRec = {
+        record_date: dateStr,
+        lotto_sales: Number(document.getElementById('s_lotto_sales').value),
+        lotto_payout: Number(document.getElementById('s_lotto_payout').value),
+        scratch_payout: Number(document.getElementById('s_scratch_payout').value),
+        scratch_total: Number(document.getElementById('s_scratch_total').innerText.replace(/,/g,'')),
+        sport_balance: Number(document.getElementById('s_sport_balance').value),
+        final_amount: Number(document.getElementById('s_final_amount').innerText.replace(/,/g,''))
+    };
+
+    await _supabase.from('daily_records').upsert(scratchRecs, { onConflict: 'record_date,item_name' });
+    await _supabase.from('summary_records').upsert(summaryRec);
+    alert("✅ 儲存成功！");
 }
 
 async function loadPrevData() {
     const date = new Date(document.getElementById('targetDate').value);
     date.setDate(date.getDate() - 1);
     const prevStr = date.toISOString().split('T')[0];
-    
     const { data } = await _supabase.from('daily_records').select('*').eq('record_date', prevStr);
-    
-    if (data && data.length > 0) {
+    if (data) {
         data.forEach(rec => {
             const row = document.querySelector(`tr[data-name="${rec.item_name}"]`);
             if (row) {
-                // 將昨日的「今日剩餘」填入今天的「前日庫存」
                 row.querySelector('.p_b').value = rec.today_book;
                 row.querySelector('.p_l').value = rec.today_loose;
                 calc(row.id.split('_')[1]);
             }
         });
-        alert("已成功代入 " + prevStr + " 的結餘數字。");
-    } else {
-        alert("找不到昨日 (" + prevStr + ") 的紀錄。");
+        alert("已帶入昨日餘額");
     }
 }
+
+function showItemModal() { itemModalObj.show(); }
 </script>
 </body>
 </html>
-
