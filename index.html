@@ -8,17 +8,26 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: #f4f7f6; padding-bottom: 120px; font-family: "Microsoft JhengHei", sans-serif; }
-        .table-main { background: white; border: 2px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .table-main th { background: #343a40; color: white; text-align: center; border: 1px solid #dee2e6; vertical-align: middle; }
+        .table-main { background: white; border: 2px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; }
+        .table-main th { background: #343a40; color: white; text-align: center; border: 1px solid #dee2e6; vertical-align: middle; padding: 10px 5px; }
         .table-main td { border: 1px solid #dee2e6; padding: 0; }
         .input-cell { width: 100%; border: none; text-align: center; outline: none; padding: 8px; height: 100%; }
         .input-cell:focus { background: #fffde7; }
         .memo-cell { font-size: 0.85rem; }
         .total-bar { position: fixed; bottom: 0; width: 100%; background: #212529; color: #ffc107; padding: 15px; font-size: 1.5rem; text-align: center; font-weight: bold; z-index: 1000; }
+
+        /* --- 橫式列印優化 --- */
         @media print {
-            .btn-group, .total-bar, .no-print { display: none !important; }
-            body { background: white; padding: 0; }
-            .table-main { border: 1px solid black; }
+            @page { 
+                size: landscape; /* 強制橫式列印 */
+                margin: 0.5cm; 
+            }
+            .no-print, .btn-group, .total-bar, .modal, .modal-backdrop { display: none !important; }
+            body { background: white; padding: 0; margin: 0; }
+            .container-fluid { width: 100%; padding: 0; }
+            .table-main { border: 2px solid black; font-size: 12px; width: 100%; table-layout: fixed; }
+            .table-main th, .table-main td { border: 1px solid black !important; color: black !important; }
+            .input-cell { background: transparent !important; }
         }
     </style>
 </head>
@@ -29,14 +38,14 @@
     
     <div class="row g-3 mb-3 no-print">
         <div class="col-md-3">
-            <label class="form-label">結帳日期</label>
+            <label class="form-label fw-bold">📅 結帳日期</label>
             <input type="date" id="targetDate" class="form-control" onchange="loadRecordsByDate()">
         </div>
         <div class="col-md-9 d-flex align-items-end gap-2">
-            <button class="btn btn-dark" onclick="addNewItemModal()">＋ 新增/管理品項</button>
+            <button class="btn btn-dark" onclick="showItemModal()">＋ 新增/管理品項</button>
             <button class="btn btn-primary" onclick="loadPrevData()">📥 帶入前日結餘</button>
-            <button class="btn btn-success" onclick="submitData()">💾 確認上傳</button>
-            <button class="btn btn-outline-dark" onclick="window.print()">🖨️ 列印報表</button>
+            <button class="btn btn-success" onclick="submitData()">💾 確認上傳紀錄</button>
+            <button class="btn btn-outline-dark" onclick="window.print()">🖨️ 列印(橫式)</button>
         </div>
     </div>
 
@@ -44,19 +53,19 @@
         <table class="table table-main">
             <thead>
                 <tr>
-                    <th rowspan="2" style="width: 150px;">品名</th>
-                    <th colspan="2">庫存 (本)</th>
-                    <th rowspan="2">前日<br>零張</th>
-                    <th colspan="2">現量 (今日剩餘)</th>
-                    <th rowspan="2">售出</th>
-                    <th rowspan="2">金額</th>
-                    <th rowspan="2" style="width: 150px;">備註</th>
+                    <th rowspan="2" style="width: 14%;">品名</th>
+                    <th colspan="2" style="width: 16%;">庫存 (本)</th>
+                    <th rowspan="2" style="width: 8%;">前日<br>零張</th>
+                    <th colspan="2" style="width: 16%;">現量 (今日剩餘)</th>
+                    <th rowspan="2" style="width: 8%;">售出</th>
+                    <th rowspan="2" style="width: 10%;">金額</th>
+                    <th rowspan="2" style="width: 28%;">備註</th>
                 </tr>
                 <tr>
-                    <th>前日</th>
-                    <th>新進</th>
-                    <th>整本</th>
-                    <th>零張</th>
+                    <th style="width: 8%;">前日</th>
+                    <th style="width: 8%;">新進</th>
+                    <th style="width: 8%;">整本</th>
+                    <th style="width: 8%;">零張</th>
                 </tr>
             </thead>
             <tbody id="scratchBody">
@@ -69,34 +78,62 @@
     今日總結金額：$ <span id="grandTotal">0</span>
 </div>
 
-<div class="modal fade" id="itemModal" tabindex="-1">
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header"><h5>新增刮刮樂品項</h5></div>
+      <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title">新增刮刮樂品項</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
-        <label>品名</label><input type="text" id="m_name" class="form-control mb-2">
-        <label>單本張數</label><input type="number" id="m_size" class="form-control mb-2" value="19">
-        <label>單價 (元/張)</label><input type="number" id="m_price" class="form-control mb-2" value="2000">
+        <div class="mb-3">
+            <label class="form-label">品名</label>
+            <input type="text" id="m_name" class="form-control" placeholder="例如：超級紅包">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">單本張數</label>
+            <input type="number" id="m_size" class="form-control" value="19">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">單價 (元/張)</label>
+            <input type="number" id="m_price" class="form-control" value="2000">
+        </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-primary" onclick="saveNewItem()">儲存並新增</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-primary" onclick="saveNewItem()">儲存並載入</button>
       </div>
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 const SUPABASE_URL = 'https://nzuxyiefpenwuqudajdw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_7y2n8zIopxlKEhcsJ05D2A_U89IFgae';
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
-document.getElementById('targetDate').valueAsDate = new Date();
+// 在全域宣告，方便呼叫
+let itemModalObj;
 
-// 1. 初始化載入品項
+// 初始化
+window.onload = function() {
+    itemModalObj = new bootstrap.Modal(document.getElementById('itemModal'));
+    document.getElementById('targetDate').valueAsDate = new Date();
+    init();
+};
+
+function showItemModal() {
+    itemModalObj.show();
+}
+
 async function init() {
     const { data: items, error } = await supabase.from('scratch_items').select('*').order('price', { ascending: false });
-    if (error) return console.error(error);
+    if (error) {
+        console.error(error);
+        return;
+    }
     
     const tbody = document.getElementById('scratchBody');
     tbody.innerHTML = '';
@@ -120,10 +157,10 @@ async function init() {
         `;
         tbody.appendChild(row);
     });
-    loadRecordsByDate(); // 初次載入當日資料
+    loadRecordsByDate();
 }
 
-// 2. 帶入前日結餘邏輯
+// 帶入前日結餘
 async function loadPrevData() {
     const date = new Date(document.getElementById('targetDate').value);
     date.setDate(date.getDate() - 1);
@@ -135,18 +172,18 @@ async function loadPrevData() {
         data.forEach(rec => {
             const row = document.querySelector(`tr[data-name="${rec.item_name}"]`);
             if (row) {
-                row.querySelector('.p_b').value = rec.today_book;  // 昨天的餘本變今天的前日本
-                row.querySelector('.p_l').value = rec.today_loose; // 昨天的餘張變今天的前日零
+                row.querySelector('.p_b').value = rec.today_book;
+                row.querySelector('.p_l').value = rec.today_loose;
                 calc(row.id.split('_')[1]);
             }
         });
-        alert(`已帶入 ${prevDateStr} 的結餘數據`);
+        alert(`已成功帶入 ${prevDateStr} 的結餘資料！`);
     } else {
-        alert("找不到前一日的結算紀錄");
+        alert("找不到前一日 (" + prevDateStr + ") 的紀錄，請檢查日期或手動輸入。");
     }
 }
 
-// 3. 查詢特定日期紀錄
+// 查詢日期紀錄
 async function loadRecordsByDate() {
     const dateStr = document.getElementById('targetDate').value;
     const { data, error } = await supabase.from('daily_records').select('*').eq('record_date', dateStr);
@@ -165,16 +202,15 @@ async function loadRecordsByDate() {
             }
         });
     } else {
-        // 如果沒紀錄，清空欄位但保留「前日」部分以便重新輸入
         document.querySelectorAll('.n_b, .t_b, .t_l').forEach(i => i.value = 0);
         document.querySelectorAll('.memo').forEach(i => i.value = '');
         calcAll();
     }
 }
 
-// 4. 計算小計與總計
 function calc(id) {
     const row = document.getElementById(`row_${id}`);
+    if(!row) return;
     const size = Number(row.dataset.size);
     const price = Number(row.dataset.price);
     
@@ -200,12 +236,12 @@ function calcAll() {
     document.getElementById('grandTotal').innerText = total.toLocaleString();
 }
 
-// 5. 儲存至 Supabase
 async function submitData() {
     const dateStr = document.getElementById('targetDate').value;
     const records = [];
 
     document.querySelectorAll('#scratchBody tr').forEach(row => {
+        const id = row.id.split('_')[1];
         records.push({
             record_date: dateStr,
             item_name: row.dataset.name,
@@ -214,8 +250,8 @@ async function submitData() {
             prev_loose: Number(row.querySelector('.p_l').value),
             today_book: Number(row.querySelector('.t_b').value),
             today_loose: Number(row.querySelector('.t_l').value),
-            sold_count: Number(document.getElementById(`sold_${row.id.split('_')[1]}`).innerText),
-            subtotal: Number(document.getElementById(`subt_${row.id.split('_')[1]}`).innerText.replace(/,/g,'')),
+            sold_count: Number(document.getElementById(`sold_${id}`).innerText),
+            subtotal: Number(document.getElementById(`subt_${id}`).innerText.replace(/,/g,'')),
             memo: row.querySelector('.memo').value
         });
     });
@@ -223,25 +259,27 @@ async function submitData() {
     const { error } = await supabase.from('daily_records').upsert(records, { onConflict: 'record_date,item_name' });
 
     if (error) alert("儲存失敗：" + error.message);
-    else alert("今日結帳紀錄已儲存成功！");
+    else alert("今日紀錄已成功存入資料庫！");
 }
 
-// 6. 新增品項功能
-function addNewItemModal() { itemModal.show(); }
 async function saveNewItem() {
     const name = document.getElementById('m_name').value;
     const size = Number(document.getElementById('m_size').value);
     const price = Number(document.getElementById('m_price').value);
     
+    if(!name) { alert("請輸入名稱"); return; }
+
     const { error } = await supabase.from('scratch_items').insert([{ name, size, price }]);
-    if (error) alert("新增失敗(品名可能重複)");
-    else {
-        itemModal.hide();
+    if (error) {
+        alert("新增失敗，品名可能已存在。");
+    } else {
+        alert("品項新增成功！");
+        itemModalObj.hide();
+        // 清空輸入框
+        document.getElementById('m_name').value = '';
         init();
     }
 }
-
-init();
 </script>
 </body>
 </html>
