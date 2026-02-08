@@ -1,69 +1,45 @@
-<div class="card">
-    <div class="card-header">🎟️ 刮刮樂進銷存 (2000元區範例)</div>
-    <div class="card-body">
-        <div class="row g-2 mb-3 bg-light p-2 rounded">
-            <div class="col-6">
-                <label class="unit-label">前日整本 + 新進</label>
-                <div class="input-group">
-                    <input type="number" id="sc_prev_book" class="form-control sc-logic" placeholder="前日" value="5">
-                    <span class="input-group-text">+</span>
-                    <input type="number" id="sc_new_book" class="form-control sc-logic" placeholder="新進" value="7">
-                </div>
-            </div>
-            <div class="col-6">
-                <label class="unit-label">前日剩餘零張</label>
-                <input type="number" id="sc_prev_loose" class="form-control sc-logic" value="21">
-            </div>
-        </div>
-
-        <div class="row g-2 mb-3 p-2 border rounded">
-            <div class="col-6">
-                <label class="unit-label text-danger">今日剩餘整本</label>
-                <input type="number" id="sc_today_book" class="form-control sc-logic" value="6">
-            </div>
-            <div class="col-6">
-                <label class="unit-label text-danger">今日剩餘零張</label>
-                <input type="number" id="sc_today_loose" class="form-control sc-logic" value="10">
-            </div>
-        </div>
-
-        <div class="row g-2 align-items-center">
-            <div class="col-12">
-                <div class="alert alert-info mb-0 py-2">
-                    <strong>售出張數：</strong> <span id="res_sc_count">0</span> 張 <br>
-                    <strong>售出金額：</strong> $<span id="res_sc_money">0</span>
-                    <input type="hidden" name="scratchSales" id="hidden_sc_sales">
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// 在原本的實時計算監聽中加入此邏輯
-document.querySelectorAll('.sc-logic').forEach(el => {
-    el.addEventListener('input', calculateScratchInventory);
-});
-
-function calculateScratchInventory() {
-    const prevB = Number(document.getElementById('sc_prev_book').value) || 0;
-    const newB = Number(document.getElementById('sc_new_book').value) || 0;
-    const prevL = Number(document.getElementById('sc_prev_loose').value) || 0;
-    const todayB = Number(document.getElementById('sc_today_book').value) || 0;
-    const todayL = Number(document.getElementById('sc_today_loose').value) || 0;
+function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.openById("1USVEYZabE5ET0qG2-D9AQrGh4nB2IX-jiidg0spKk14");
+    var sheet = ss.getSheetByName("Data");
+    var d = JSON.parse(e.postData.contents);
     
-    // 19張/本 的邏輯
-    const booksSold = (prevB + newB - todayB);
-    const looseSold = (prevL - todayL);
-    const totalSold = (booksSold * 19) + looseSold;
-    const totalMoney = totalSold * 2000;
-
-    document.getElementById('res_sc_count').innerText = totalSold;
-    document.getElementById('res_sc_money').innerText = totalMoney.toLocaleString();
-    document.getElementById('hidden_sc_sales').value = totalMoney;
+    // 嚴格對照 35 個名目順序
+    var rowData = [
+      new Date(),                 // A 時間
+      d.date,                     // B 日期
+      d.shift,                    // C 班別
+      d.staff,                    // D 人員
+      d.lottoSales,               // E 台彩銷售
+      d.lottoVoid,                // F 台彩作廢
+      d.lottoPayoutIn,            // G 台彩店內兌獎
+      d.lottoPayoutOut,           // H 台彩跨店兌獎
+      d.scratchLoad,              // I 刮刮樂拆封 (今日新進總面額)
+      d.scratchSales,             // J 刮刮樂銷售 (由進銷存模組算出)
+      d.scratchPayout,            // K 刮刮樂兌獎
+      d.sportSales,               // L 運彩銷售
+      d.sportVoid,                // M 運彩作廢
+      d.sportPayout,              // N 運彩兌獎
+      d.sportVirtual,             // O 運彩虛擬業績
+      d.memberIn,                 // P 運彩會員儲值
+      d.memberOut,                // Q 運彩會員出金
+      d.c2000 || 0, d.c1000 || 0, d.c500 || 0, d.c200 || 0, d.c100 || 0, // R,S,T,U,V 鈔票
+      d.m50 || 0, d.m10 || 0, d.m5 || 0, d.m1 || 0,                     // W,X,Y,Z 硬幣
+      d.opening || 0,             // AA 期初週轉金
+      d.bankAction || 0,          // AB 銀行存入
+      0,                          // AC 店長提領 (預留)
+      d.expNote || "",            // AD 雜支項目
+      d.expAmount || 0,           // AE 雜支金額
+      d.expectedCash,             // AF 應有現金
+      d.actualCash,               // AG 實際現金
+      d.diff,                     // AH 損益差異
+      d.memo || ""                // AI 備註
+    ];
     
-    // 觸發總結算更新
-    runGlobalCalculation(); 
+    sheet.appendRow(rowData);
+    return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
+  } catch(err) {
+    return ContentService.createTextOutput("Error: " + err.toString()).setMimeType(ContentService.MimeType.TEXT);
+  }
 }
-</script>
 
