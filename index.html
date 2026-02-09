@@ -3,65 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>刮刮樂進銷存 Pro v2.1</title>
+    <title>刮刮樂進銷存旗艦版 v3.0</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root { --main-dark: #212529; --accent: #ffc107; }
+        :root { --main-gray: #f8f9fa; --border-color: #dee2e6; --print-text: #000; }
         body { background: #f0f2f5; padding-bottom: 80px; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; }
         
-        /* 基礎 UI */
-        .table-main { background: white; border: 2px solid #333; table-layout: fixed; width: 100%; font-size: 0.95rem; }
-        .table-main th { background: var(--main-dark); color: white; border: 1px solid #444; text-align: center; vertical-align: middle; padding: 6px; }
-        .table-main td { border: 1px solid #ccc; padding: 0; vertical-align: middle; }
-        
-        /* 輸入格優化 */
-        .input-cell { width: 100%; border: none; text-align: center; outline: none; padding: 10px 2px; font-size: 1.1rem; font-weight: 600; background: transparent; }
-        .input-cell:focus { background: #fffde7; }
-        .memo-cell { font-size: 0.85rem; text-align: left; padding: 5px !important; border: 1px solid #eee; }
-        
-        .total-bar { position: fixed; bottom: 0; width: 100%; background: var(--main-dark); color: var(--accent); padding: 12px; font-size: 1.4rem; text-align: center; font-weight: bold; z-index: 1000; }
+        /* 固定表頭 */
+        .sticky-header th { position: sticky; top: 0; z-index: 100; background: #555 !important; color: white; border: 1px solid #444; }
+        .sticky-header-2 th { position: sticky; top: 38px; z-index: 100; background: #666 !important; color: white; border: 1px solid #444; }
 
-        /* 帳務表 */
-        .summary-table th { background: #eee; color: #333; text-align: left; padding: 10px; width: 55%; border: 1px solid #333; font-size: 1.1rem; }
-        .summary-table td { border: 1px solid #333; padding: 0; }
-        .summary-input { text-align: right; font-weight: bold; font-size: 1.2rem; border: none; width: 100%; padding: 10px; background: transparent; }
+        /* 表格樣式 */
+        .table-main { background: white; border: 1px solid #333; table-layout: fixed; width: 100%; border-collapse: collapse; }
+        .table-main td { border: 1px solid #ccc; vertical-align: middle; padding: 0; }
+        
+        /* 灰白交替樣式 (按單價) */
+        .price-group-a { background-color: #ffffff; }
+        .price-group-b { background-color: #f2f2f2; }
 
-        /* 列印佈局 - 強化版 */
+        /* 輸入格 */
+        .input-cell { width: 100%; border: none; text-align: center; outline: none; padding: 10px 2px; font-size: 1.1rem; font-weight: 600; background: transparent; transition: 0.2s; }
+        .input-cell:focus { background: #fffde7; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+        .memo-cell { font-size: 0.85rem; text-align: left !important; padding: 0 5px !important; }
+
+        /* 帳務表樣式 */
+        .summary-table { border: 2px solid #666; width: 100%; background: white; }
+        .summary-table th, .summary-table td { border: 1px solid #666; padding: 8px; font-size: 1rem; }
+        .summary-input { text-align: right; font-weight: bold; font-size: 1.1rem; border: none; width: 100%; background: transparent; outline: none; }
+        .expense-row { background: #fff5f5; }
+
+        /* 底部資訊欄 */
+        .total-bar { position: fixed; bottom: 0; width: 100%; background: #343a40; color: #ffc107; padding: 12px; font-size: 1.4rem; text-align: center; font-weight: bold; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+
+        /* 列印優化 */
         @media print {
             @page { size: A4 landscape; margin: 0.5cm; }
             body { background: white; padding-bottom: 0; }
             .no-print { display: none !important; }
-            
-            .print-container { display: flex; gap: 20px; align-items: flex-start; }
-            .print-left { flex: 6.5; } 
-            .print-right { flex: 3.5; } 
-            
-            .table-main, .summary-table { border: 2.5px solid black !important; font-size: 11pt; }
-            .table-main th, .table-main td, .summary-table th, .summary-table td { border: 1px solid black !important; color: black !important; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 15px; }
-            .input-cell, .summary-input { padding: 4px; font-size: 11pt; font-weight: bold; }
-            .memo-cell { font-size: 9pt; }
+            .print-container { display: flex; gap: 15px; }
+            .print-left { flex: 0 0 68%; }
+            .print-right { flex: 0 0 32%; }
+            .table-main, .summary-table { border: 1px solid black !important; color: black; }
+            th { background: #eee !important; color: black !important; }
+            .input-cell, .summary-input { font-size: 10pt; font-weight: bold; }
+            .price-group-b { background-color: #f9f9f9 !important; }
         }
-        .print-header { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container-fluid py-3">
-    <div class="print-header">
-        <h2 class="mb-0">刮刮樂進銷存報表</h2>
-        <p id="printDateDisplay" class="h5"></p>
-    </div>
-
     <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <h4 class="m-0">🏆 刮刮樂進銷存 Pro v2.1</h4>
+        <h4 class="m-0">📋 刮刮樂旗艦進銷存</h4>
         <div class="d-flex gap-2">
+            <button class="btn btn-outline-success btn-sm" onclick="exportToExcel()">📊 匯出 Excel</button>
             <button class="btn btn-dark btn-sm" onclick="showItemModal()">⚙️ 品項管理</button>
-            <button class="btn btn-outline-dark btn-sm" onclick="window.print()">🖨️ 列印(橫式A4)</button>
+            <button class="btn btn-outline-dark btn-sm" onclick="window.print()">🖨️ 列印報表</button>
         </div>
     </div>
-    
+
     <div class="card shadow-sm mb-3 no-print">
         <div class="card-body py-2">
             <div class="row g-2 align-items-end">
@@ -70,7 +72,7 @@
                     <input type="date" id="targetDate" class="form-control" onchange="loadRecordsByDate()">
                 </div>
                 <div class="col text-end">
-                    <button class="btn btn-primary btn-sm" onclick="showImportModal()">📥 代入餘額紀錄</button>
+                    <button class="btn btn-primary btn-sm" onclick="showImportModal()">📥 代入餘額</button>
                     <button class="btn btn-success btn-sm" onclick="submitData()">💾 儲存今日紀錄</button>
                 </div>
             </div>
@@ -80,22 +82,22 @@
     <div class="print-container">
         <div class="print-left">
             <div class="table-responsive">
-                <table class="table table-main">
+                <table class="table table-main" id="excel-table-1">
                     <thead>
-                        <tr>
-                            <th rowspan="2" style="width: 18%;">品名</th>
+                        <tr class="sticky-header">
+                            <th rowspan="2" style="width: 20%;">品名(單價)</th>
                             <th colspan="2">庫存 (本)</th>
-                            <th rowspan="2" style="width: 8%;">前日<br>零張</th>
+                            <th rowspan="2" style="width: 7%;">前日<br>零張</th>
                             <th colspan="2">今日剩餘</th>
-                            <th rowspan="2" style="width: 8%;">售出</th>
+                            <th rowspan="2" style="width: 7%;">售出</th>
                             <th rowspan="2" style="width: 14%;">金額</th>
-                            <th rowspan="2" style="width: 20%;">備註</th>
+                            <th rowspan="2" style="width: 18%;">備註</th>
                         </tr>
-                        <tr>
-                            <th style="width: 8%;">前日</th>
-                            <th style="width: 8%;">新進</th>
-                            <th style="width: 8%;">整本</th>
-                            <th style="width: 8%;">零張</th>
+                        <tr class="sticky-header-2">
+                            <th style="width: 7%;">前日</th>
+                            <th style="width: 7%;">新進</th>
+                            <th style="width: 7%;">整本</th>
+                            <th style="width: 7%;">零張</th>
                         </tr>
                     </thead>
                     <tbody id="scratchBody"></tbody>
@@ -104,15 +106,20 @@
         </div>
 
         <div class="print-right">
-            <h5 class="fw-bold mb-2">📒 帳務彙總表</h5>
-            <table class="table summary-table">
-                <tr><th>樂透銷售總計</th><td><input type="number" id="s_lotto_sales" class="summary-input" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
-                <tr><th>樂透兌獎代墊 (-)</th><td><input type="number" id="s_lotto_payout" class="summary-input text-danger" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
-                <tr><th>立即型兌獎代墊 (-)</th><td><input type="number" id="s_scratch_payout" class="summary-input text-danger" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
-                <tr><th>刮刮樂總金額 (+)</th><td id="s_scratch_total" class="text-end fw-bold px-2 py-2 text-primary">0</td></tr>
-                <tr><th>運彩銷售結餘 (+/-)</th><td><input type="number" id="s_sport_balance" class="summary-input" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
-                <tr style="background: #222; color: #ffc107;">
-                    <th style="background: #222; color: #ffc107;">💰 應收總金額</th>
+            <h5 class="fw-bold mb-2">📒 帳務彙總</h5>
+            <table class="table summary-table" id="excel-table-2">
+                <tr><th>樂透銷售</th><td><input type="number" id="s_lotto_sales" class="summary-input" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
+                <tr><th>樂透兌獎(-)</th><td><input type="number" id="s_lotto_payout" class="summary-input text-danger" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
+                <tr><th>立即型兌獎(-)</th><td><input type="number" id="s_scratch_payout" class="summary-input text-danger" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
+                <tr><th>刮刮樂總額(+)</th><td id="s_scratch_total" class="text-end fw-bold px-2 py-2 text-primary">0</td></tr>
+                <tr><th>運彩結餘(+/-)</th><td><input type="number" id="s_sport_balance" class="summary-input" value="0" onfocus="this.select()" oninput="calcFinal()"></td></tr>
+                
+                <tbody id="expenseBody"></tbody>
+                
+                <tr class="no-print"><td colspan="2" class="p-0 text-center"><button class="btn btn-link btn-sm text-decoration-none" onclick="addExpenseRow()">＋新增支出 (如便當)</button></td></tr>
+                
+                <tr style="background: #eee;">
+                    <th class="fw-bold">💰 今日應收</th>
                     <td id="s_final_amount" class="text-end fw-bold px-2 py-2 h4 mb-0">0</td>
                 </tr>
             </table>
@@ -120,27 +127,37 @@
     </div>
 </div>
 
-<div class="total-bar no-print">刮刮樂總額：$ <span id="grandTotal">0</span></div>
+<div class="total-bar no-print">刮刮樂小計：$ <span id="grandTotal">0</span></div>
 
-<div class="modal fade" id="itemModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-      <div class="modal-header bg-dark text-white"><h5 class="modal-title">品項管理</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-          <div class="row g-2 mb-3 border-bottom pb-3">
-              <div class="col-md-5"><input type="text" id="m_name" class="form-control" placeholder="品名"></div>
-              <div class="col-md-3"><input type="number" id="m_size" class="form-control" value="19" placeholder="張數"></div>
-              <div class="col-md-3"><input type="number" id="m_price" class="form-control" value="2000" placeholder="單價"></div>
-              <div class="col-md-1"><button class="btn btn-primary w-100" onclick="saveNewItem()">＋</button></div>
-          </div>
-          <div class="table-responsive" style="max-height: 400px;"><table class="table table-sm"><tbody id="itemManageList"></tbody></table></div>
-      </div>
+<div class="modal fade" id="itemModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content">
+    <div class="modal-header bg-dark text-white"><h5 class="modal-title">⚙️ 品項與歷史統計</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+        <div class="row g-2 mb-3 border-bottom pb-3">
+            <div class="col-md-4"><label class="small fw-bold">品名</label><input type="text" id="m_name" class="form-control"></div>
+            <div class="col-md-2"><label class="small fw-bold">張數/本</label><input type="number" id="m_size" class="form-control" value="100"></div>
+            <div class="col-md-2"><label class="small fw-bold">單價</label><input type="number" id="m_price" class="form-control" value="100"></div>
+            <div class="col-md-2"><label class="small fw-bold">&nbsp;</label><button class="btn btn-primary w-100" onclick="saveItem()">儲存/新增</button></div>
+            <input type="hidden" id="m_id">
+        </div>
+        <div class="table-responsive" style="max-height: 500px;">
+            <table class="table table-hover align-middle">
+                <thead class="table-light sticky-top">
+                    <tr><th>品名</th><th>單價</th><th>歷史總銷(張)</th><th>歷史總額</th><th>操作</th></tr>
+                </thead>
+                <tbody id="itemManageList"></tbody>
+            </table>
+        </div>
+    </div>
 </div></div></div>
 
 <div class="modal fade" id="importModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header bg-primary text-white"><h5 class="modal-title">選擇要代入的紀錄日期</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body"><select id="historyDateSelect" class="form-select mb-3"></select><button class="btn btn-primary w-100" onclick="executeImport()">確認代入選中日期餘額</button></div>
+    <div class="modal-header bg-primary text-white"><h5 class="modal-title">📥 代入歷史餘額</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+        <label class="mb-2">請選擇來源日期：</label>
+        <select id="historyDateSelect" class="form-select mb-3"></select>
+        <button class="btn btn-primary w-100" onclick="executeImport()">確認代入</button>
+    </div>
 </div></div></div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 const SUPABASE_URL = 'https://nzuxyiefpenwuqudajdw.supabase.co';
@@ -149,18 +166,14 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let itemModalObj, importModalObj;
 let allItems = [];
+let expenses = [];
 
 window.onload = function() {
     itemModalObj = new bootstrap.Modal(document.getElementById('itemModal'));
     importModalObj = new bootstrap.Modal(document.getElementById('importModal'));
     document.getElementById('targetDate').valueAsDate = new Date();
-    updatePrintDate();
     init();
 };
-
-function updatePrintDate() {
-    document.getElementById('printDateDisplay').innerText = "結帳日期：" + document.getElementById('targetDate').value;
-}
 
 async function init() {
     try {
@@ -168,42 +181,49 @@ async function init() {
         if (error) throw error;
         allItems = data;
         renderScratchTable();
-        renderManageList();
         loadRecordsByDate();
-    } catch (e) { console.error(e.message); }
+    } catch (e) { console.error(e); }
 }
 
 function renderScratchTable() {
     const tbody = document.getElementById('scratchBody');
     tbody.innerHTML = '';
-    allItems.forEach(item => { if(item.is_active) createRow(item); });
+    let lastPrice = null;
+    let groupClass = 'price-group-a';
+
+    allItems.forEach(item => {
+        if (lastPrice !== null && item.price !== lastPrice) {
+            groupClass = (groupClass === 'price-group-a') ? 'price-group-b' : 'price-group-a';
+        }
+        createRow(item, groupClass);
+        lastPrice = item.price;
+    });
 }
 
-function createRow(item) {
+function createRow(item, groupClass) {
     const tbody = document.getElementById('scratchBody');
     const row = document.createElement('tr');
     row.id = `row_${item.id}`;
-    row.className = "item-row";
+    row.className = `item-row ${groupClass}`;
     row.setAttribute('data-size', item.size);
     row.setAttribute('data-price', item.price);
     row.setAttribute('data-name', item.name);
     row.innerHTML = `
-        <td class="text-center fw-bold p-2 small">${item.name}</td>
+        <td class="px-2 fw-bold small">${item.name}<br><span class="text-muted">$${item.price}</span></td>
         <td><input type="number" class="input-cell p_b" value="0" onfocus="this.select()" oninput="calc(${item.id})"></td>
         <td><input type="number" class="input-cell n_b" value="0" onfocus="this.select()" oninput="calc(${item.id})"></td>
         <td><input type="number" class="input-cell p_l" value="0" onfocus="this.select()" oninput="calc(${item.id})"></td>
         <td><input type="number" class="input-cell t_b" value="0" onfocus="this.select()" oninput="calc(${item.id})"></td>
         <td><input type="number" class="input-cell t_l" value="0" onfocus="this.select()" oninput="calc(${item.id})"></td>
-        <td id="sold_${item.id}" class="text-center fw-bold text-primary align-middle">0</td>
-        <td id="subt_${item.id}" class="text-center fw-bold text-danger align-middle subt-val">0</td>
-        <td><input type="text" class="input-cell memo memo-cell" placeholder="..."></td>
+        <td id="sold_${item.id}" class="text-center fw-bold text-primary">0</td>
+        <td id="subt_${item.id}" class="text-center fw-bold text-danger subt-val">0</td>
+        <td><input type="text" class="input-cell memo-cell" placeholder="..."></td>
     `;
     tbody.appendChild(row);
 }
 
 function calc(id) {
     const row = document.getElementById(`row_${id}`);
-    if(!row) return;
     const size = Number(row.dataset.size);
     const price = Number(row.dataset.price);
     const pB = Number(row.querySelector('.p_b').value) || 0;
@@ -218,39 +238,48 @@ function calc(id) {
     calcFinal();
 }
 
+function addExpenseRow(label = "", val = 0) {
+    const tbody = document.getElementById('expenseBody');
+    const tr = document.createElement('tr');
+    tr.className = "expense-row";
+    tr.innerHTML = `
+        <th><input type="text" class="summary-input text-start fw-normal expense-name" value="${label}" placeholder="輸入名稱(如便當)"></th>
+        <td><input type="number" class="summary-input text-danger expense-val" value="${val}" onfocus="this.select()" oninput="calcFinal()"></td>
+    `;
+    tbody.appendChild(tr);
+}
+
 function calcFinal() {
     let scratchTotal = 0;
     document.querySelectorAll('.subt-val').forEach(el => scratchTotal += Number(el.innerText.replace(/,/g, '')));
     document.getElementById('grandTotal').innerText = scratchTotal.toLocaleString();
     document.getElementById('s_scratch_total').innerText = scratchTotal.toLocaleString();
+    
     const lS = Number(document.getElementById('s_lotto_sales').value) || 0;
     const lP = Number(document.getElementById('s_lotto_payout').value) || 0;
     const sP = Number(document.getElementById('s_scratch_payout').value) || 0;
     const sB = Number(document.getElementById('s_sport_balance').value) || 0;
-    const final = lS - lP - sP + scratchTotal + sB;
+    
+    let totalExpense = 0;
+    document.querySelectorAll('.expense-val').forEach(el => totalExpense += (Number(el.value) || 0));
+    
+    const final = lS - lP - sP + scratchTotal + sB - totalExpense;
     document.getElementById('s_final_amount').innerText = final.toLocaleString();
 }
 
 async function loadRecordsByDate() {
-    updatePrintDate();
     const dateStr = document.getElementById('targetDate').value;
-    
-    // 徹底清空當前 UI
     document.querySelectorAll('.input-cell').forEach(i => i.value = (i.type === 'number' ? 0 : ''));
-    document.querySelectorAll('[id^="sold_"], [id^="subt_"]').forEach(el => el.innerText = "0");
+    document.getElementById('expenseBody').innerHTML = '';
 
     const { data: scratchData } = await _supabase.from('daily_records').select('*').eq('record_date', dateStr);
     if (scratchData) {
         scratchData.forEach(rec => {
             let row = document.querySelector(`tr[data-name="${rec.item_name}"]`);
-            if (!row) {
-                const itm = allItems.find(i => i.name === rec.item_name);
-                if (itm) { createRow(itm); row = document.querySelector(`tr[data-name="${rec.item_name}"]`); }
-            }
             if (row) {
                 row.querySelector('.p_b').value = rec.prev_book; row.querySelector('.n_b').value = rec.new_book;
                 row.querySelector('.p_l').value = rec.prev_loose; row.querySelector('.t_b').value = rec.today_book;
-                row.querySelector('.t_l').value = rec.today_loose; row.querySelector('.memo').value = rec.memo || '';
+                row.querySelector('.t_l').value = rec.today_loose; row.querySelector('.memo-cell').value = rec.memo || '';
                 calc(row.id.split('_')[1]);
             }
         });
@@ -262,83 +291,98 @@ async function loadRecordsByDate() {
         document.getElementById('s_lotto_payout').value = sData.lotto_payout;
         document.getElementById('s_scratch_payout').value = sData.scratch_payout;
         document.getElementById('s_sport_balance').value = sData.sport_balance;
+        if (sData.expenses) {
+            JSON.parse(sData.expenses).forEach(ex => addExpenseRow(ex.name, ex.val));
+        }
     }
     calcFinal();
-}
-
-// 歷史日期代入邏輯
-async function showImportModal() {
-    const { data } = await _supabase.from('daily_records').select('record_date').order('record_date', {ascending: false});
-    const uniqueDates = [...new Set(data.map(d => d.record_date))].slice(0, 10);
-    const select = document.getElementById('historyDateSelect');
-    select.innerHTML = uniqueDates.map(d => `<option value="${d}">${d}</option>`).join('');
-    importModalObj.show();
-}
-
-async function executeImport() {
-    const sourceDate = document.getElementById('historyDateSelect').value;
-    const { data } = await _supabase.from('daily_records').select('*').eq('record_date', sourceDate);
-    if (data) {
-        data.forEach(rec => {
-            const row = document.querySelector(`tr[data-name="${rec.item_name}"]`);
-            if (row) {
-                row.querySelector('.p_b').value = rec.today_book;
-                row.querySelector('.p_l').value = rec.today_loose;
-                calc(row.id.split('_')[1]);
-            }
-        });
-        alert(`已從 ${sourceDate} 代入餘額！`);
-        importModalObj.hide();
-    }
 }
 
 async function submitData() {
     const dateStr = document.getElementById('targetDate').value;
     const scratchRecs = [];
     document.querySelectorAll('.item-row').forEach(row => {
-        const id = row.id.split('_')[1];
         scratchRecs.push({
             record_date: dateStr, item_name: row.dataset.name,
             prev_book: Number(row.querySelector('.p_b').value), new_book: Number(row.querySelector('.n_b').value),
             prev_loose: Number(row.querySelector('.p_l').value), today_book: Number(row.querySelector('.t_b').value),
-            today_loose: Number(row.querySelector('.t_l').value), sold_count: Number(document.getElementById(`sold_${id}`).innerText),
-            subtotal: Number(document.getElementById(`subt_${id}`).innerText.replace(/,/g,'')), memo: row.querySelector('.memo').value
+            today_loose: Number(row.querySelector('.t_l').value), sold_count: Number(document.getElementById(`sold_${row.id.split('_')[1]}`).innerText),
+            subtotal: Number(document.getElementById(`subt_${row.id.split('_')[1]}`).innerText.replace(/,/g,'')), memo: row.querySelector('.memo-cell').value
         });
     });
+
+    const expData = [];
+    document.querySelectorAll('.expense-row').forEach(row => {
+        expData.push({ name: row.querySelector('.expense-name').value, val: Number(row.querySelector('.expense-val').value) });
+    });
+
     const sRec = {
         record_date: dateStr, lotto_sales: Number(document.getElementById('s_lotto_sales').value),
         lotto_payout: Number(document.getElementById('s_lotto_payout').value), scratch_payout: Number(document.getElementById('s_scratch_payout').value),
         scratch_total: Number(document.getElementById('s_scratch_total').innerText.replace(/,/g,'')), sport_balance: Number(document.getElementById('s_sport_balance').value),
-        final_amount: Number(document.getElementById('s_final_amount').innerText.replace(/,/g,''))
+        final_amount: Number(document.getElementById('s_final_amount').innerText.replace(/,/g,'')),
+        expenses: JSON.stringify(expData)
     };
     await _supabase.from('daily_records').upsert(scratchRecs, { onConflict: 'record_date,item_name' });
     await _supabase.from('summary_records').upsert(sRec);
     alert("✅ 儲存成功！");
 }
 
-async function toggleItem(id, currentStatus) {
-    await _supabase.from('scratch_items').update({ is_active: !currentStatus }).eq('id', id);
-    init(); 
-}
-
-function renderManageList() {
+async function showItemModal() {
+    const { data: stats } = await _supabase.rpc('get_item_stats'); // 需在 Supabase 定義函數，若無則改用 JS 計算
     const list = document.getElementById('itemManageList');
-    list.innerHTML = allItems.map(item => `
-        <tr class="${item.is_active ? '' : 'table-light text-muted'}">
-            <td>${item.name} ($${item.price})</td>
-            <td class="text-end"><button class="btn btn-sm ${item.is_active ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="toggleItem(${item.id}, ${item.is_active})">${item.is_active ? '下架' : '上架'}</button></td>
-        </tr>`).join('');
+    list.innerHTML = '';
+
+    // 模擬統計資料 (建議在 DB 端做，此處為 JS 累加範例)
+    const { data: allHistory } = await _supabase.from('daily_records').select('item_name, sold_count, subtotal');
+
+    allItems.forEach(item => {
+        const itemHistory = allHistory.filter(h => h.item_name === item.name);
+        const totalSold = itemHistory.reduce((sum, h) => sum + h.sold_count, 0);
+        const totalSum = itemHistory.reduce((sum, h) => sum + h.subtotal, 0);
+
+        list.innerHTML += `
+            <tr>
+                <td><strong>${item.name}</strong></td>
+                <td>$${item.price}</td>
+                <td class="text-primary fw-bold">${totalSold}</td>
+                <td class="text-danger fw-bold">$${totalSum.toLocaleString()}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editItem(${item.id}, '${item.name}', ${item.size}, ${item.price})">編輯</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id}, '${item.name}')">刪除</button>
+                </td>
+            </tr>`;
+    });
+    itemModalObj.show();
 }
 
-async function saveNewItem() {
-    const n = document.getElementById('m_name').value;
-    const s = Number(document.getElementById('m_size').value);
-    const p = Number(document.getElementById('m_price').value);
-    if(n) { await _supabase.from('scratch_items').insert([{ name: n, size: s, price: p }]); init(); }
+async function saveItem() {
+    const id = document.getElementById('m_id').value;
+    const name = document.getElementById('m_name').value;
+    const size = Number(document.getElementById('m_size').value);
+    const price = Number(document.getElementById('m_price').value);
+    if(!name) return;
+
+    if(id) {
+        // 替換品名邏輯：連同歷史紀錄一起更換
+        const oldName = allItems.find(i => i.id == id).name;
+        await _supabase.from('scratch_items').update({ name, size, price }).eq('id', id);
+        await _supabase.from('daily_records').update({ item_name: name }).eq('item_name', oldName);
+    } else {
+        await _supabase.from('scratch_items').insert([{ name, size, price }]);
+    }
+    document.getElementById('m_id').value = '';
+    init();
+    itemModalObj.hide();
 }
 
-function showItemModal() { itemModalObj.show(); }
-</script>
-</body>
-</html>
+function editItem(id, name, size, price) {
+    document.getElementById('m_id').value = id;
+    document.getElementById('m_name').value = name;
+    document.getElementById('m_size').value = size;
+    document.getElementById('m_price').value = price;
+}
 
+async function deleteItem(id, name) {
+    if(confirm(`⚠️ 確定要刪除「${name}」嗎？\n刪除後該品項的歷史銷售紀錄將無法正確關聯且不再顯示於列表！`)) {
+        await _supabase.from('scratch_items').delete().eq(
